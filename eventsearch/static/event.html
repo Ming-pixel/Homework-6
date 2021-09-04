@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Event Search (Python)</title>
+
+<style type="text/css">
+body, html {
+    font-family: "Times New Roman", Times, serif;
+    margin: 10px;
+}
+.clear_fix {
+    margin: 0;
+    padding: 0;
+    clear: both;
+}
+.search_box {
+    width: 800px;
+    margin: 20px auto;
+    padding: 10px 10px 25px 10px;
+    border: #cccccc 3px solid;
+}
+.search_box h1 {
+    margin: 0;
+    font-size: 40px;
+    font-style: italic;
+    font-weight: lighter;
+    text-align: center;
+    border-bottom: #ebebeb 2px solid;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+}
+label, .from {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 10px auto;
+}
+input {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px;
+    margin: 10px auto;
+    border: #c9c9c9 1px solid;
+}
+.here {
+    font-weight: lighter;
+}
+.location {
+    margin-left: 325px;
+}
+.search, .clear_btn {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+}
+.search {
+    margin-left: 70px;
+}
+.event_list {
+    width: 100%;
+    max-width: 1280px;
+    margin: 10px auto 20px auto;
+}
+.list {
+    width: 100%;
+    border-collapse: collapse;
+}
+.list, .list th, .list td {
+    border: #ebebeb 2px solid;
+}
+.list th, .list td {
+    padding: 2px 10px;
+}
+.list td:first-child, .list td:nth-child(2) {
+    padding: 0;
+    text-align: center;
+}
+.list img {
+    width: 100px;
+    height: auto;
+}
+.event_list a, .event_content a {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+.event_list a:hover, .event_content a:hover {
+    color: #c5c5c5;
+}
+.no_records {
+    font-size: 18px;
+    text-align: center;
+    padding: 5px 0;
+    background-color: #e5e5e5;
+    border: #cccccc 3px solid;
+}
+.event_content {
+    width: 800px;
+    margin: 40px auto 30px auto;
+}
+h2 {
+    text-align: center;
+}
+.left {
+    float: left;
+    width: 35%;
+}
+.right {
+    float: left;
+    width: 65%;
+    text-align: center;
+}
+.right img {
+    width: 96%;
+    height: auto;
+}
+.left h3, .left p {
+    margin: 0;
+}
+.left h3 {
+    line-height: 35px;
+}
+.left p {
+    line-height: 20px; 
+    padding-bottom: 10px;
+}
+.center_fix {
+    float: inherit !important;
+    margin: 0 auto;
+}
+</style>
+</head>
+<body>
+    <div class="search_box">
+        <h1>Events Search</h1>
+        <form onsubmit="searchevent();return false">
+            <!-- Keyword -->
+            <label for="keyword">Keyword</label>
+            <input type="search" id="keyword" name="keyword" required="required" pattern="[A-Za-z0-9]{1,20}"><br/>
+            <!-- Category -->
+            <label for="category">Category</label>
+            <select name="category" id="category">
+                <option value="default">Default</option>
+                <option value="music">Music</option>
+                <option value="sports">Sports</option>
+                <option value="artstheatre">Arts & Theatre</option>
+                <option value="film">Film</option>
+                <option value="miscellaneous">Miscellaneous</option>
+            </select><br/>
+            <!-- Distance -->
+            <label for="distance">Distance (miles)</label>
+            <input type="text" id="distance" name="distance" placeholder="10"> 
+            <span class="from">from</span> 
+            <input type="radio" id="here_radio" name="location" checked> 
+            <label class="here" for="here">Here</label><br/>
+            <input type="radio" id="location_radio" name="location" class="location" >
+            <input type="text" id="location_txt" name="location" placeholder="location" disabled><br/>
+            <!-- Search & Clear -->
+            <button type="submit" id="search" class="search">Search</button> <button type="reset" class="clear_btn" id="clear_btn">Clear</button>
+        </form>
+    </div>
+    <div class="event_list">
+        <div class="no_records" id="no_records" hidden>No Records has been found</div>
+        <table class="list" id="results"></table>
+    </div>
+    <div class="event_content" id="details">
+    </div>
+    
+
+
+<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        $('#location_radio').click(function() {
+            $('#location_txt').prop("disabled", false);
+            $('#location_txt').prop("required", true);
+        });
+        $('#here_radio').click(function() {
+            $('#location_txt').prop("disabled", true);
+        });
+        $('#clear_btn').click(function() {
+            details = $("#details");
+            details.empty();
+            table = $("#results");
+            table.empty();
+        });
+    });
+</script>
+<script type="text/javascript">
+    function eventdetails(id){
+        $.ajax({
+            url: '/eventdetails',
+            type: 'GET', 
+            data: { 
+                'id': id
+            },
+            success: function(response) {
+                console.log('eventdetails', response);
+                details = $("#details");
+                details.empty();
+                if(response['name']){
+                    var title = "<h2>" + response['name'] + "</h2>";
+                    details.append(title);
+                }
+                if(response['dates']){
+                    var date = response['dates']['start']['localDate'];
+                    var time = response['dates']['start']['localTime'];
+                    if(response['seatmap']){
+                        element = "<div class=\"left\"><h3>Date</h3><p>" + date + "  " + time + "</p>";
+                    }else{
+                        element = "<div class=\"left\" style=\"float: inherit !important; margin: 0 auto;\"><h3>Date</h3><p>" + date + "  " + time + "</p>";
+                    }
+                }
+                if(response['_embedded']){
+                    if(response['_embedded']['attractions']){
+                        element += "<h3>Artist / Team</h3><p>";
+                        var teams = response['_embedded']['attractions'];
+                        for(var i = 0; i < teams.length - 1; ++i){
+                            var team = teams[i];
+                            var teamname = team['name'];
+                            var teamwebsite = team['url'];
+                            element += "<a href=\"" + teamwebsite + "\" target=\"_blank\">" + teamname + "</a> | ";
+                        }
+                        if(teams.length >= 1){
+                            var team = teams[teams.length-1];
+                            var teamname = team['name'];
+                            var teamwebsite = team['url'];
+                            element += "<a href=\"" + teamwebsite + "\" target=\"_blank\">" + teamname + "</a></p>";
+                        }
+                    }
+                    if(response['_embedded']['venues']){
+                        var venue = response['_embedded']['venues'][0]['name'];
+                        element += "<h3>Venue</h3><p>" + venue + "</p>";
+                    }
+                }
+                if(response['classifications']){
+                    var classification = response['classifications'][0];
+                    var subGenre = classification['subGenre']['name'];
+                    var genre = classification['genre']['name'];
+                    var segment = classification['segment']['name'];
+                    var subType = classification['subType']['name'];
+                    var type = classification['type']['name'];
+                    element += "<h3>Genre</h3><p>"+ subGenre +" | " + genre + " | " + segment + " | " + subType + " | " + type + "</p>"
+                }
+                if(response['priceRanges']){
+                    var priceRanges = response['priceRanges'][0];
+                    var min = priceRanges['min'];
+                    var max = priceRanges['max'];
+                    var currency = priceRanges['currency'];
+                    element += "<h3>Price Ranges</h3><p>" + min + " - " + max + " " + currency + "</p>"
+                }
+                if(response['dates']){
+                    var status = response['dates']['status']['code'];
+                    element += "<h3>Ticket Status</h3><p>" + status +"</p>";
+                }
+                if(response['url']){
+                    var ticketwebsite = response['url'];
+                    element += "<h3>Buy Ticket At:</h3><p><a href=\"" + ticketwebsite + "\" target=\"_blank\">Ticketmaster</a></p>"
+                } 
+                element += "</div>";
+                if(response['seatmap']){
+                    var seatmapurl = response['seatmap']['staticUrl'];
+                    element += "<div class=\"right\"><img src=\"" + seatmapurl + "\"></div>";
+                }
+                element += "<div class=\"clear_fix\"></div>";
+                details.append(element);
+                $(window).scrollTop($('#details').offset().top);
+            },
+            error: function(error) {
+                alert(error);
+            }
+        });
+    }
+</script>
+<script type="text/javascript">
+    function searchevent(){
+        var loc = '';
+        var address = '';
+        var keyword = $("#keyword").val();
+            var category = $("#category").val();
+            if($("#here_radio").is(":checked")){
+                console.log('here is checked');
+                $.get("https://ipinfo.io?token=9e923be0bf75de", function(response) {
+                    console.log('loc: ', response.loc);
+                    distance = $("#distance").val();
+                    if( distance === ''){
+                        distance = '10';
+                    }
+                    $.ajax({
+                        url: '/event',
+                        type: 'GET', 
+                        data: { 
+                            'keyword': keyword,
+                            'category': category,
+                            'distance': distance,
+                            'here': 'true',
+                            'loc': response.loc
+                        },
+                        success: function(response) {
+                            console.log(response);
+                            table = $("#results");
+                            table.empty();
+                            details = $("#details");
+                            details.empty();
+                            if(response['_embedded']){
+                                $("#no_records").hide();
+                                var events = response['_embedded']['events'];
+                                
+                                title = "<tr><th>Date</th><th>Icon</th><th>Event</th><th>Genre</th><th>Venue</th></tr>";
+                                table.append(title);
+                                for(var i = 0; i < events.length; ++i){
+                                    var event = events[i];
+                                    console.log('event: ', event);
+                                    var date = event['dates']['start']['localDate'];
+                                    var time = event['dates']['start']['localTime'];
+                                    var icon = event['images'][3]['url'];
+                                    var id = event['id'];
+                                    var name = event['name'];
+                                    var genre = event['classifications'][0]['segment']['name'];
+                                    var venue = event['_embedded']['venues'][0]['name'];
+                                    console.log('id: ', id);
+                                    row = "<tr><td>" + date + "  " + time + "</td><td><img src=" + icon + "></td><td><a data-value=\"" + id + "\" onclick=\"eventdetails(this.dataset['value']); return false;\">" + name + "</a></td><td>" + genre + "</td><td>" + venue + "</td></tr>";
+                                    table.append(row);
+                                }
+                            } else {
+                                $("#no_records").show();
+                            }
+                        },
+                        error: function(error) {
+                            alert(error);
+                        }
+                    });
+                }, "json");
+            }
+            if($("#location_radio").is(":checked")){
+                distance = $("#distance").val();
+                if( distance === ''){
+                    distance = '10';
+                }
+                $.ajax({
+                    url: '/event',
+                    type: 'GET', 
+                    data: { 
+                        'keyword': keyword,
+                        'category': category,
+                        'distance': distance,
+                        'here': 'false',
+                        'address': $("#location_txt").val()
+                    },
+                    success: function(response) {
+                        console.log(response);
+                        table = $("#results");
+                        table.empty();
+                        details = $("#details");
+                        details.empty();
+                        if(response['_embedded']){
+                            $("#no_records").hide();
+                            var events = response['_embedded']['events'];
+                            
+                            title = "<tr><th>Date</th><th>Icon</th><th>Event</th><th>Genre</th><th>Venue</th></tr>";
+                            table.append(title);
+                            for(var i = 0; i < events.length; ++i){
+                                var event = events[i];
+                                console.log('event: ', event);
+                                var date = event['dates']['start']['localDate'];
+                                var time = event['dates']['start']['localTime'];
+                                var icon = event['images'][3]['url'];
+                                var id = event['id'];
+                                var name = event['name'];
+                                if(event['classifications']){
+                                    var genre = event['classifications'][0]['segment']['name'];
+                                }else{
+                                    var genre = 'N/A';
+                                }
+                                var venue = event['_embedded']['venues'][0]['name'];
+                                console.log('id: ', id);
+                                row = "<tr><td>" + date + "  " + time + "</td><td><img src=" + icon + "></td><td><a href=\"#details\" data-value=\"" + id + "\" onclick=\"eventdetails(this.dataset['value']); return false;\">" + name + "</a></td><td>" + genre + "</td><td>" + venue + "</td></tr>";
+                                table.append(row);
+                            }
+                        } else {
+                            $("#no_records").show();
+                        }
+                    },
+                    error: function(error) {
+                        alert(error);
+                    }
+                });
+            }
+    }
+</script>
+
+
+</body>
+</html>
